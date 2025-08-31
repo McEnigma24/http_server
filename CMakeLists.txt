@@ -46,7 +46,7 @@ set(ALL_LIBRARIES ${LIBRARY_PATH_CORE}/libCORE.a)
 # set(ALL_LIBRARIES ${ALL_LIBRARIES} ${LIBRARY_RANDOMS_LIB}/libRandoms.so)
 
 
-set(CONST_TARGET_NAME "TEMPLATE")
+set(CONST_TARGET_NAME "HTTP_SERVER")
 
 option(BUILD_LIBRARY "Build library instead of library executable" OFF) # default value - could be overwritten by provided FLAG
 
