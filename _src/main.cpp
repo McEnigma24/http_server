@@ -10,20 +10,19 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <httpparser/httprequestparser.h>
+#include <httpparser/httpresponseparser.h>
+
+#include <nlohmann/json.hpp>
+
 #define SIZE 1024
+
+using namespace httpparser;
 
 #ifdef BUILD_EXECUTABLE
 int main(int argc, char* argv[])
 {
     srand(time(NULL));
-
-    cout << unitbuf;
-    cerr << unitbuf;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    cout << "Logs from your program will appear here!\n";
-
-    // Uncomment this block to pass the first stage
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0)
@@ -32,8 +31,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // Since the tester restarts your program quite often, setting SO_REUSEADDR
-    // ensures that we don't run into 'Address already in use' errors
     int reuse = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
     {
@@ -72,33 +69,26 @@ int main(int argc, char* argv[])
             cerr << "accept failed\n";
             continue;
         }
-        cout << "Client connected\n";
+        cout << "Client connected\n\n\n";
 
         char client_request[SIZE];
         recv(client_socket, client_request, sizeof(client_request), 0);
 
-        string client_req(client_request);
-        string endpoint;
+        // string client_req(client_request);
 
-        size_t start = client_req.find(" ") + 1;  // Position after "GET "
-        size_t end = client_req.find(" ", start); // Position of space before "HTTP/1.1"
+        Request request;
+        HttpRequestParser parser;
 
-        string resp = "HTTP/1.1 404 Not Found\r\n\r\n";
+        HttpRequestParser::ParseResult res = parser.parse(request, client_request, client_request + strlen(client_request));
 
-        if (start != string::npos && end != string::npos)
-        {
-            endpoint = client_req.substr(start, end - start);
-            cout << "Endpoint requested: " << endpoint << "\n";
+        if (res == HttpRequestParser::ParsingCompleted)
+            std::cout << request.inspect() << std::endl;
+        else
+            std::cerr << "Parsing failed" << std::endl;
 
-            if (endpoint == "/")
-            {
-                // resp = "HTTP/1.1 200 OK\r\n\r\n";
-
-                resp = "HTTP/1.1 200 OK\r\n"
-                       "Connection: close\r\n"
-                       "\r\n";
-            }
-        }
+        string resp = "HTTP/1.1 200 OK\r\n"
+                      "Connection: close\r\n"
+                      "\r\n";
 
         send(client_socket, resp.c_str(), resp.size(), 0);
         close(client_socket);

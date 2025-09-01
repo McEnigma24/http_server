@@ -46,6 +46,35 @@ set(ALL_LIBRARIES ${LIBRARY_PATH_CORE}/libCORE.a)
 # set(ALL_LIBRARIES ${ALL_LIBRARIES} ${LIBRARY_RANDOMS_LIB}/libRandoms.so)
 
 
+# SUBMODULES #
+
+# 1 - httpparser #
+include(FetchContent)
+FetchContent_Declare(
+    httpparser
+    GIT_REPOSITORY https://github.com/nekipelov/httpparser.git
+    GIT_TAG        master # lub inny tag/commit
+)
+FetchContent_Populate(httpparser)
+
+# set(ALL_LIBRARIES ${ALL_LIBRARIES} httpparser)
+include_directories(${httpparser_SOURCE_DIR}/src)
+
+
+# 2 - json #
+include(FetchContent)
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        master # lub inny tag/commit
+)
+FetchContent_Populate(json)
+
+# set(ALL_LIBRARIES ${ALL_LIBRARIES} json)
+include_directories(${json_SOURCE_DIR}/include)
+
+
+
 set(CONST_TARGET_NAME "HTTP_SERVER")
 
 option(BUILD_LIBRARY "Build library instead of library executable" OFF) # default value - could be overwritten by provided FLAG
