@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(MyProject LANGUAGES CXX)
+project(MyProject LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -10,40 +10,27 @@ endif()
 # set(CMAKE_CXX_COMPILER g++)
 # set(CMAKE_CXX_COMPILER clang++)
 
-set(LIBRARY_PATH_CORE ${CMAKE_CURRENT_SOURCE_DIR}/external/CORE_lib/build/)
-link_directories(${LIBRARY_PATH_CORE})
-
-include_directories(_inc external/CORE_lib/_inc)
+include_directories(_inc)
 aux_source_directory(_src SOURCES)
 
-aux_source_directory(_src TEST_SOURCES)
-list(FILTER TEST_SOURCES EXCLUDE REGEX ".*main\\.cpp")
-aux_source_directory(_test TEST_SOURCES)
+
+# MACRO FOR LOGS # - dont show the whole realpath to file
+
+string(LENGTH "${CMAKE_SOURCE_DIR}/" SOURCE_PATH_SIZE)
+add_definitions(-DSOURCE_PATH_SIZE=${SOURCE_PATH_SIZE})
+
 
 # COMPILER FLAGS #
 
-# https://docs.oracle.com/cd/E19957-01/806-3572/Rev.html
-# https://caiorss.github.io/C-Cpp-Notes/compiler-flags-options.html
-# https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wfatal-errors
-
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra")                                                             # to see everything
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wfatal-errors -Werror=uninitialized -Werror=init-self -Werror=reorder")    # for normal coding
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -w")                                                         # for release
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wfatal-errors -Werror=uninitialized -Werror=init-self -Werror=reorder")    # for normal coding
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -w")                                                         # for release
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-
-#                                                                  https://hjlebbink.github.io/x86doc/
-#                                                                  - look for *.o file
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -S") # ASSEMBLY
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -S -fverbose-asm") # ASSEMBLY with comments
-
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -m64")
-set(LINK_FLAGS "${LINK_FLAGS} -m64")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 
 
-set(ALL_LIBRARIES ${LIBRARY_PATH_CORE}/libCORE.a)
-# set(ALL_LIBRARIES ${ALL_LIBRARIES} ${LIBRARY_RANDOMS_LIB}/libRandoms.so)
+
 
 
 # SUBMODULES #
@@ -61,6 +48,7 @@ FetchContent_Populate(httpparser)
 include_directories(${httpparser_SOURCE_DIR}/src)
 
 
+
 # 2 - json #
 include(FetchContent)
 FetchContent_Declare(
@@ -75,44 +63,37 @@ include_directories(${json_SOURCE_DIR}/include)
 
 
 
+# 3 - gpiod #
+set(ALL_LIBRARIES ${ALL_LIBRARIES} gpiod)
+
+
+
+# 4 - ssd1306 #
+include(FetchContent)
+FetchContent_Declare(
+    ssd1306
+    GIT_REPOSITORY https://github.com/armlabs/ssd1306_linux.git
+    GIT_TAG        master # lub inny tag/commit
+)
+FetchContent_MakeAvailable(ssd1306) # tutaj nie dzial, a normanie zbudowalby projekt, ale tutaj nie zrobi bo nie ma pliku CMakeLists.txt
+
+include_directories(${ssd1306_SOURCE_DIR})
+
+# Dodaj pliki źródłowe ręcznie
+file(GLOB SSD1306_SOURCES
+    ${ssd1306_SOURCE_DIR}/*.c
+)
+
+add_library(ssd1306 STATIC ${SSD1306_SOURCES})
+target_include_directories(ssd1306 PUBLIC ${ssd1306_SOURCE_DIR})
+
+set(ALL_LIBRARIES ${ALL_LIBRARIES} ssd1306) # dodajemy do glownego EXE
+
+
 set(CONST_TARGET_NAME "HTTP_SERVER")
-
-option(BUILD_LIBRARY "Build library instead of library executable" OFF) # default value - could be overwritten by provided FLAG
-
-if(BUILD_LIBRARY)
-    message(WARNING "Building library")
-    
-    set(TARGET_NAME "${CONST_TARGET_NAME}")
-    add_library(${TARGET_NAME} SHARED ${SOURCES})
-    target_compile_definitions(${TARGET_NAME} PRIVATE LINUX)
-    set_target_properties(${TARGET_NAME} PROPERTIES ${COMPILE_FLAGS} ${LINK_FLAGS})
-    target_link_libraries(${TARGET_NAME} PUBLIC ${ALL_LIBRARIES})
-else()
     message(WARNING "Building exe")
-
     set(TARGET_NAME "${CONST_TARGET_NAME}.exe")
     add_executable(${TARGET_NAME} ${SOURCES})
     target_compile_definitions(${TARGET_NAME} PRIVATE LINUX BUILD_EXECUTABLE)
-    set_target_properties(${TARGET_NAME} PROPERTIES ${COMPILE_FLAGS} ${LINK_FLAGS})
+    # set_target_properties(${TARGET_NAME} PROPERTIES ${COMPILE_FLAGS} ${LINK_FLAGS})
     target_link_libraries(${TARGET_NAME} PUBLIC ${ALL_LIBRARIES})
-endif()
-
-option(CTEST_ACTIVE "Testing is active" OFF)  # default value - could be overwritten by provided FLAG
-
-if(CTEST_ACTIVE)
-    message(WARNING "TESTING...")
-    # Włączenie testów
-    enable_testing()
-
-    # Pobieranie jako submoduł
-    add_subdirectory(external/googletest)
-
-    # Dodanie testów
-    set(TEST_EXE_NAME "test.texe")  # Nazwa binarki testowej
-    add_executable(${TEST_EXE_NAME} ${TEST_SOURCES})
-    target_link_libraries(${TEST_EXE_NAME} PRIVATE gtest_main ${ALL_LIBRARIES})
-    # Rejestracja testów
-    include(GoogleTest)
-    gtest_discover_tests(${TEST_EXE_NAME})
-
-endif()
