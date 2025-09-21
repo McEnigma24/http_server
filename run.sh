@@ -17,7 +17,7 @@ clear
 
 
 # libgpiod-dev
-pip install pyphen
+# pip install pyphen
 
 create_dir $DIR_BUILD
 
